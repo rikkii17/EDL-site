@@ -3,6 +3,7 @@
 
 # 実行時データ・秘密情報・配布成果物をコミットしない。
 /release/
+/edl-site-release.zip
 /var/
 /.test-runtime/
 __pycache__/
