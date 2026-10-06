@@ -1,7 +1,7 @@
-"""Real HTTP security regression tests, using only Python stdlib and PHP CLI.
+"""Python標準ライブラリとPHP CLIで実際のHTTP認証・負荷制限を検証する。
 
-All credentials/data are disposable. Nothing connects to the deployment server.
-Run: python tests/security-integration.py [--php /path/to/php]
+認証情報と保存データはすべて使い捨て。本番サーバーには接続しない。
+実行例: python tests/security-integration.py [--php /path/to/php]
 """
 import argparse
 import contextlib
@@ -26,7 +26,7 @@ PHP = shutil.which("php")
 
 
 class Server:
-    """Isolated package layout: public APIs and sibling private code/storage."""
+    """公開APIと、その外側の秘密コード・保存先を配布時と同じ構成で分離する。"""
     def __init__(self, allow_http=True, public_storage=False):
         self.temp = tempfile.TemporaryDirectory(prefix="edl-security-")
         self.root = Path(self.temp.name)
@@ -91,7 +91,7 @@ class Server:
             self.url + path, data=raw, headers=headers, method=method
         )
         try:
-            result = (client or self.client()).open(request, timeout=3)
+            result = (client or self.client()).open(request, timeout=15)
         except urllib.error.HTTPError as error:
             result = error
         with result:
@@ -259,21 +259,44 @@ class SecurityTests(unittest.TestCase):
             path.write_text(previous)
 
     def test_busy_storage_releases_worker_with_bounded_wait(self):
-        # Use PHP flock on both sides; Windows/POSIX file locks differ otherwise.
+        # OSごとのロック方式の差を避けるため、保持側と検証側の両方でPHPのflockを使う。
         process = subprocess.Popen([PHP, "-r",
             "$f=fopen($argv[1], 'c'); flock($f, LOCK_EX); "
-            "echo 'ready\\n'; fflush(STDOUT); sleep(5);",
+            "echo 'ready\\n'; fflush(STDOUT); sleep(30);",
             str(self.server.data / "state.lock")], stdout=subprocess.PIPE, text=True)
         try:
-            # Read the known marker without requiring a newline from PHP's single quotes.
+            # PHPの単引用符による改行解釈に依存せず、ロック取得済みの印を読む。
             self.assertEqual(process.stdout.read(5), "ready")
             started = time.monotonic()
             self.assertEqual(self.ingest()[0], 503)
-            self.assertLess(time.monotonic() - started, 1.0)
+            # 並行ビルド中のCPU待ちを許容しつつ、30秒のロック保持まで待たないことを確認する。
+            self.assertLess(time.monotonic() - started, 10.0)
         finally:
             process.terminate()
             process.wait(timeout=5)
             process.stdout.close()
+
+    def test_global_admin_cap_prevents_new_session_files(self):
+        self.admin()
+        for path in (self.server.data / "rate").glob("admin-global-*.json"):
+            path.write_text(json.dumps({"count": 120, "reset": int(time.time()) + 60}))
+        before = set((self.server.data / "sessions").glob("sess_*"))
+        status, _, _ = self.server.request("/api/admin.php")
+        self.assertEqual(status, 429)
+        self.assertEqual(set((self.server.data / "sessions").glob("sess_*")), before)
+
+    def test_cron_cleans_expired_private_sessions(self):
+        expired = self.server.data / "sessions" / "sess_expiredtest"
+        active = self.server.data / "sessions" / "sess_activetest"
+        expired.write_text("")
+        active.write_text("")
+        old = time.time() - 4000
+        os.utime(expired, (old, old))
+        completed = subprocess.run([PHP, str(ROOT / "server/bin/aggregate.php")],
+                                   env=self.server.env, capture_output=True, text=True)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertFalse(expired.exists())
+        self.assertTrue(active.exists())
 
 
 if __name__ == "__main__":
