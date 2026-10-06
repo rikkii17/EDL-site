@@ -1,0 +1,2 @@
+# Install as /etc/cron.d/edl (root-owned). No user-editable script paths.
+* * * * * www-data EDL_DATA_DIR=/var/lib/edl /usr/bin/php /opt/edl/bin/aggregate.php >> /var/log/edl-aggregate.log 2>&1

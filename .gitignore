@@ -1,2 +1,10 @@
 *.log
 *.un~
+
+# Runtime and distributable outputs must not contain committed secrets.
+/release/
+/var/
+/.test-runtime/
+__pycache__/
+*.pyc
+

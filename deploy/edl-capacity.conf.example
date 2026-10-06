@@ -1,0 +1,9 @@
+# Scope this example to your capacity review: prefork settings apply to ALL sites.
+# Suggested starting point only. Compare existing Apache settings before enabling.
+<IfModule mpm_prefork_module>
+    StartServers 2
+    MinSpareServers 2
+    MaxSpareServers 4
+    MaxRequestWorkers 16
+    MaxConnectionsPerChild 1000
+</IfModule>
