@@ -298,6 +298,18 @@ class SecurityTests(unittest.TestCase):
         self.assertFalse(expired.exists())
         self.assertTrue(active.exists())
 
+    def test_corrupt_throttle_state_does_not_reset_request_count(self):
+        self.assertEqual(self.server.request("/api/history.php")[0], 200)
+        paths = list((self.server.data / "rate").glob("history-*.json"))
+        self.assertTrue(paths)
+        for damaged in ["{partial-write", ""]:
+            for path in paths:
+                path.write_text(damaged)
+            status, _, result = self.server.request("/api/history.php")
+            self.assertEqual(status, 503)
+            self.assertEqual(result, {"error": "Service unavailable"})
+            self.assertEqual(paths[0].read_text(), damaged)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

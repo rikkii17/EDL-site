@@ -98,19 +98,18 @@ function read_json(string $path, array $default = []): array
 function atomic_json(string $path, array $value): void
 {
     // 一時ファイルを書き終えてから置き換え、閲覧中に途中のJSONを読ませない。
+    $serialized = json_encode(
+        $value,
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE,
+    );
     $temp = tempnam(dirname($path), ".edl-");
     if ($temp === false) {
         throw new RuntimeException("Storage unavailable");
     }
     try {
         if (
-            file_put_contents(
-                $temp,
-                json_encode(
-                    $value,
-                    JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE,
-                ),
-            ) === false ||
+            // 容量不足などの部分書き込みも失敗とし、元の正常なファイルを維持する。
+            file_put_contents($temp, $serialized) !== strlen($serialized) ||
             !rename($temp, $path)
         ) {
             throw new RuntimeException("Storage unavailable");
@@ -208,6 +207,7 @@ function rate_limit(
     $address = $global ? "global" : $_SERVER["REMOTE_ADDR"] ?? "cli"; // 転送元を名乗るHTTPヘッダーは信頼しない。
     $slot = hexdec(substr(hash("sha256", $address), 0, 4)) % 256;
     $path = data_dir() . "/rate/" . $kind . "-" . $slot . ".json";
+    $existed = is_file($path);
     $file = fopen($path, "c+");
     if (!$file) {
         throw new RuntimeException("Storage unavailable");
@@ -219,15 +219,38 @@ function rate_limit(
         throw $error;
     }
     try {
-        $state = json_decode(stream_get_contents($file) ?: "{}", true) ?: [];
+        $saved = stream_get_contents($file);
+        // 途中書き込みで壊れた既存状態を回数0へ戻さず、制限を解除しない側へ倒す。
+        if ($saved === false || ($existed && $saved === "")) {
+            throw new RuntimeException("Rate storage unavailable");
+        }
+        $state =
+            $saved === ""
+                ? []
+                : json_decode($saved, true, 8, JSON_THROW_ON_ERROR);
+        if (
+            $saved !== "" &&
+            (!is_array($state) ||
+                !is_int($state["reset"] ?? null) ||
+                !is_int($state["count"] ?? null) ||
+                $state["count"] < 0)
+        ) {
+            throw new RuntimeException("Rate storage unavailable");
+        }
         $now = time();
         if (($state["reset"] ?? 0) <= $now) {
             $state = ["reset" => $now + $seconds, "count" => 0];
         }
         $state["count"]++;
-        rewind($file);
-        ftruncate($file, 0);
-        fwrite($file, json_encode($state));
+        $serialized = json_encode($state, JSON_THROW_ON_ERROR);
+        if (
+            !rewind($file) ||
+            !ftruncate($file, 0) ||
+            fwrite($file, $serialized) !== strlen($serialized) ||
+            !fflush($file)
+        ) {
+            throw new RuntimeException("Rate storage unavailable");
+        }
         $blocked = $state["count"] > $limit;
     } finally {
         flock($file, LOCK_UN);
