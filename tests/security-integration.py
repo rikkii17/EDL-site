@@ -247,6 +247,34 @@ class SecurityTests(unittest.TestCase):
             finally:
                 server.close()
 
+    def test_corrupt_secret_configuration_returns_generic_error(self):
+        path = self.server.data / "config.json"
+        previous = path.read_text()
+        try:
+            path.write_text("{broken-secret-config")
+            status, _, result = self.ingest()
+            self.assertEqual(status, 503)
+            self.assertEqual(result, {"error": "Service unavailable"})
+        finally:
+            path.write_text(previous)
+
+    def test_busy_storage_releases_worker_with_bounded_wait(self):
+        # Use PHP flock on both sides; Windows/POSIX file locks differ otherwise.
+        process = subprocess.Popen([PHP, "-r",
+            "$f=fopen($argv[1], 'c'); flock($f, LOCK_EX); "
+            "echo 'ready\\n'; fflush(STDOUT); sleep(5);",
+            str(self.server.data / "state.lock")], stdout=subprocess.PIPE, text=True)
+        try:
+            # Read the known marker without requiring a newline from PHP's single quotes.
+            self.assertEqual(process.stdout.read(5), "ready")
+            started = time.monotonic()
+            self.assertEqual(self.ingest()[0], 503)
+            self.assertLess(time.monotonic() - started, 1.0)
+        finally:
+            process.terminate()
+            process.wait(timeout=5)
+            process.stdout.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
