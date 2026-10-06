@@ -29,6 +29,10 @@ fs.cpSync(path.join(root, "deploy"), path.join(output, "deploy"), {
   recursive: true,
 });
 fs.copyFileSync(path.join(root, "README.md"), path.join(output, "README.md"));
+// 検証結果も同梱し、配置時に確認済みの範囲と実機確認項目を参照できるようにする。
+fs.cpSync(path.join(root, "docs"), path.join(output, "docs"), {
+  recursive: true,
+});
 // Windowsで編集してもcron等をUbuntuで実行できるよう改行をLFに統一する。
 function normalizeText(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
