@@ -23,7 +23,7 @@ export function HistoryChart({
     span = Math.max(max - min, 1),
     start = Date.parse(records[0].ended_at),
     end = Date.parse(records[records.length - 1].ended_at);
-  // Missing samples split paths. Horizontal position reflects elapsed time.
+  // 欠測部分で線を分割する。横位置は実際の経過時間を表す。
   const paths: string[] = [];
   let current = "";
   records.forEach((row) => {

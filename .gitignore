@@ -1,7 +1,7 @@
 *.log
 *.un~
 
-# Runtime and distributable outputs must not contain committed secrets.
+# 実行時データ・秘密情報・配布成果物をコミットしない。
 /release/
 /var/
 /.test-runtime/

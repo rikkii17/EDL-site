@@ -1,5 +1,5 @@
-# Scope this example to your capacity review: prefork settings apply to ALL sites.
-# Suggested starting point only. Compare existing Apache settings before enabling.
+# preforkの設定は全サイトに影響するため、サーバー容量を確認して採用する。
+# 初期値の例。既存Apache設定と比較してから有効化する。
 <IfModule mpm_prefork_module>
     StartServers 2
     MinSpareServers 2

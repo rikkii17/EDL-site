@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Latest, type HistoryRecord } from "../types";
-// Recursive timeout avoids overlapping requests. Hidden tabs stop polling.
+// 完了後のタイマー予約で通信の重複を防ぐ。非表示タブでは更新を停止する。
 export function useMeasurements(days: number) {
   const [checkedAt, setCheckedAt] = useState(0);
   const [latest, setLatest] = useState<Latest | null>(null),

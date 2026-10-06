@@ -5,8 +5,8 @@ interface AdminState {
   csrf: string;
   interval_minutes: number;
 }
-// Session lives only in the HttpOnly cookie; JavaScript holds a CSRF token, never
-// a password hash or device key. Re-fetch the token after expiry or login rotation.
+// セッションはHttpOnly Cookieに保持し、JavaScriptはCSRFトークンだけを扱う。
+// 認証期限切れやログイン時の更新後は新しいトークンを取得する。
 export function SettingsPanel({ onSaved }: { onSaved: () => void }) {
   const [authenticated, setAuthenticated] = useState(false),
     [csrf, setCsrf] = useState(""),

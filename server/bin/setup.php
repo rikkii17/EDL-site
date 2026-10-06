@@ -1,5 +1,5 @@
 <?php
-// CLI-only initialization: never place this script or its output in public/.
+// CLI専用の初期設定。スクリプトと生成する秘密情報は公開域に置かない。
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit; }
 $directory = $argv[1] ?? '/var/lib/edl';
 if (!is_dir($directory)) mkdir($directory,0700,true);

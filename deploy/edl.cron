@@ -1,2 +1,2 @@
-# Install as /etc/cron.d/edl (root-owned). No user-editable script paths.
+# root所有で/etc/cron.d/edlへ配置する。実行コードはwww-dataから変更不可にする。
 * * * * * www-data EDL_DATA_DIR=/var/lib/edl /usr/bin/php /opt/edl/bin/aggregate.php >> /var/log/edl-aggregate.log 2>&1

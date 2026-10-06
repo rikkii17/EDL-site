@@ -1,7 +1,7 @@
 import type { Metric } from "../types";
 function evaluation(metric: Metric, value: number | null): string {
   if (value === null) return "有効な測定値なし";
-  // Preserve the Arduino's existing 1..8 evaluation, including round for noise.
+  // Arduino既存の1〜8段階評価を引き継ぐ。騒音は従来どおり四捨五入する。
   let deviation: number;
   switch (metric.key) {
     case "temperature_c":
