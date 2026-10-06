@@ -12,4 +12,13 @@ fs.mkdirSync(path.join(output,'public'),{recursive:true});
 fs.cpSync(path.join(root,'EDL-website','dist'),path.join(output,'public'),{recursive:true});
 for(const folder of ['public','private','bin'])fs.cpSync(path.join(root,'server',folder),path.join(output,folder),{recursive:true});
 fs.cpSync(path.join(root,'deploy'),path.join(output,'deploy'),{recursive:true});
+// Windowsで編集してもcron等をUbuntuで実行できるよう改行をLFに統一する。
+function normalizeText(directory) {
+  for (const entry of fs.readdirSync(directory,{withFileTypes:true})) {
+    const file=path.join(directory,entry.name);
+    if(entry.isDirectory()) normalizeText(file);
+    else fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n'));
+  }
+}
+for(const directory of ['private','bin','deploy','public/api'])normalizeText(path.join(output,directory));
 console.log('Deployment package: '+output);
