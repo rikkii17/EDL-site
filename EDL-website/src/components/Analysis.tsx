@@ -1,0 +1,11 @@
+import type { HistoryRecord, Latest } from '../types';
+// 気温（℃）と相対湿度（%）から算出。欠測をゼロとして扱わない。
+function discomfort(t:number|null,h:number|null){return t===null||h===null||!Number.isFinite(t)||!Number.isFinite(h)?null:0.81*t+0.01*h*(0.99*t-14.3)+46.3;}
+function label(v:number|null){return v===null?'温度・湿度データなし':v<60?'寒さを感じる目安':v<70?'比較的快適な目安':v<75?'蒸し暑さを感じ始める目安':v<80?'蒸し暑い目安':'強い蒸し暑さの目安';}
+export function Analysis({latest,stale,records}:{latest:Latest|null;stale:boolean;records:HistoryRecord[]}){
+ const value=discomfort(latest?.temperature_c??null,latest?.humidity_pct??null);
+ const history=records.map(row=>({row,value:discomfort(row.metrics.temperature_c.mean,row.metrics.humidity_pct.mean)})).filter(item=>item.value!==null);
+ return <div className="analysis-grid"><section className="analysis-card"><h2>不快指数</h2><p className="value">{value?.toFixed(1)??'—'}</p><p>{label(value)}</p>{stale&&<p className="muted">更新待ち · 現在の状態は判定できません</p>}<p className="muted">温度・湿度から算出。風や日射、個人差は含みません。</p><details><summary>計算式・出典</summary><p className="muted">0.81 × 気温 + 0.01 × 湿度 × (0.99 × 気温 − 14.3) + 46.3</p><a href="https://www.ipc.shimane-u.ac.jp/weather/station/ws2/eco.html" target="_blank" rel="noreferrer">島根大学 Web気象台</a></details></section>
+ <section className="analysis-card"><h2>運動・暑さ指数（WBGT）</h2><p className="value">—<span>°C</span></p><p>必要な測定データなし</p><p className="muted">黒球温度・自然湿球温度が未測定のため、WBGTと運動可否は判定できません。不快指数を代用しません。</p><details><summary>WBGTによる運動指針</summary><ul className="guidelines"><li>31°C以上：運動は原則中止</li><li>28〜31°C未満：厳重警戒</li><li>25〜28°C未満：警戒</li><li>21〜25°C未満：注意</li><li>21°C未満：ほぼ安全（適宜水分補給）</li></ul><a href="https://www.wbgt.env.go.jp/wbgt.php" target="_blank" rel="noreferrer">環境省・熱中症予防運動指針</a></details></section>
+ <section className="history analysis-history"><h2>不快指数の履歴（24時間）</h2><p className="muted">各区間の平均温度・平均湿度から算出した参考値。瞬時の指数の平均とは異なります。</p>{history.length?<div className="table-scroll"><table><thead><tr><th scope="col">日時</th><th scope="col">不快指数</th><th scope="col">目安</th></tr></thead><tbody>{[...history].reverse().map(item=><tr key={item.row.ended_at}><th scope="row">{new Date(item.row.ended_at).toLocaleString('ja-JP')}</th><td>{item.value!.toFixed(1)}</td><td>{label(item.value)}</td></tr>)}</tbody></table></div>:<p className="empty">解析できる履歴がありません</p>}</section></div>;
+}

@@ -55,7 +55,8 @@ export function SettingsPanel({ onSaved }: { onSaved: () => void }) {
         setPassword("");
       } else if (action === "logout") {
         setAuthenticated(false);
-        setCsrf("");
+        const fresh = await api<AdminState>("admin.php");
+        setCsrf(fresh.csrf);
         onSaved();
       } else setMessage("保存しました。次の集計から適用されます。");
     } catch (error) {
