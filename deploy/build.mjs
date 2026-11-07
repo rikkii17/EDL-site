@@ -50,4 +50,11 @@ function normalizeText(directory) {
 }
 for (const directory of ["private", "bin", "deploy", "public/api"])
   normalizeText(path.join(output, directory));
+// ZIPも毎回作り直し、以前の配布物を誤ってアップロードしないようにする。
+// Python標準ライブラリを使い、WindowsのPowerShell実行ポリシーに依存しない。
+execFileSync(process.platform === "win32" ? "python" : "python3", ["-c",
+    "import shutil,sys; shutil.make_archive(sys.argv[1], 'zip', sys.argv[2])",
+    path.join(root, "edl-site-release"), output,
+], { stdio: "inherit" });
 console.log("Deployment package: " + output);
+console.log("Deployment archive: " + path.join(root, "edl-site-release.zip"));

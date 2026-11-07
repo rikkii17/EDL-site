@@ -16,6 +16,10 @@ python tests/integration-firmware.py --firmware ../engineering_design_laboratory
 node deploy/build.mjs
 ```
 
+`node deploy/build.mjs` は最新のWebビルド、`release`、`edl-site-release.zip`をまとめて更新します。
+`npm run build`だけでは配布フォルダやZIPは更新されません。
+ZIPを展開すると直下に`public`、`private`、`bin`などが配置されます。
+
 `release/public`だけをApache公開域にします。`release/private`と`release/bin`は兄弟ディレクトリに保持します。
 ビルドだけでは受信APIは動きません。PHPファイルとcronも配置してください。
 開発用HTTPは `EDL_ALLOW_HTTP=1` とループバックIPの組み合わせでのみ許可されます。本番に設定しないでください。
